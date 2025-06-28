@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Mini Battle Cats</title>
+<style>
+  body{margin:0;display:flex;flex-direction:column;align-items:center;background:#111;color:#eee;font-family:sans-serif;}
+  #ui{margin:8px;display:flex;gap:16px;align-items:center;}
+  button{padding:8px 16px;border:none;border-radius:12px;background:#ff4081;color:#fff;font-size:16px;cursor:pointer;}
+  button:hover{opacity:0.8;}
+  canvas{border:2px solid #444;background:#222;}
+</style>
+</head>
+<body>
+<h2>Mini Battle Cats</h2>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<div id="ui">
+  <button id="spawnCat">Cat 100円</button>
+  <span id="money">お金: 300</span>
+  <span id="baseHP">自拠点HP: 1000</span>
+  <span id="enemyHP">敵拠点HP: 1000</span>
+</div>
+<script>
+// ゲーム定数
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const GROUND_Y = canvas.height - 40;
+const PLAYER_SIDE = 'player';
+const ENEMY_SIDE = 'enemy';
+let money = 300;
+const moneySpan = document.getElementById('money');
+const baseHPSpan = document.getElementById('baseHP');
+const enemyHPSpan = document.getElementById('enemyHP');
+
+const bases = {
+  player: {x:0, hp:1000},
+  enemy:  {x:canvas.width, hp:1000}
+};
+
+class Unit{
+  constructor(side){
+    this.side = side;
+    this.width = 30;
+    this.height = 30;
+    this.y = GROUND_Y - this.height;
+    this.hp = 100;
+    this.atk = 20;
+    this.speed = side===PLAYER_SIDE ? 1.2 : -1.0;
+    this.x = side===PLAYER_SIDE ? bases.player.x+60 : bases.enemy.x-60-this.width;
+    this.color = side===PLAYER_SIDE ? '#4caf50' : '#f44336';
+    this.attackCooldown = 0;
+  }
+  update(dt){
+    if(this.hp<=0) return;
+    // 敵ユニットとの戦闘判定
+    const target = units.find(u=>u.side!==this.side && Math.abs(u.x-this.x)<this.width && u.hp>0);
+    if(target){
+      if(this.attackCooldown<=0){
+        target.hp -= this.atk;
+        this.attackCooldown = 0.8; // 0.8秒毎に攻撃
+      }
+    }else{
+      // 移動処理
+      this.x += this.speed*dt*60;
+      // 拠点攻撃
+      if(this.side===PLAYER_SIDE && this.x+this.width>=bases.enemy.x){
+        bases.enemy.hp -= this.atk;
+        this.attackCooldown = 0.8;
+      }
+      if(this.side===ENEMY_SIDE && this.x<=bases.player.x+10){
+        bases.player.hp -= this.atk;
+        this.attackCooldown = 0.8;
+      }
+    }
+    if(this.attackCooldown>0) this.attackCooldown -= dt;
+  }
+  draw(){
+    ctx.fillStyle=this.color;
+    ctx.fillRect(this.x,this.y,this.width,this.height);
+  }
+}
+const units = [];
+// 敵スポーン
+let enemyTimer = 0;
+function spawnEnemy(){
+  units.push(new Unit(ENEMY_SIDE));
+}
+// プレイヤースポーン
+document.getElementById('spawnCat').addEventListener('click',()=>{
+  if(money>=100){
+    money-=100;
+    moneySpan.textContent='お金: '+Math.floor(money);
+    units.push(new Unit(PLAYER_SIDE));
+  }
+});
+// ゲームループ
+let last = performance.now();
+function loop(now){
+  const dt=(now-last)/1000;
+  last=now;
+  // 画面クリア
+  ctx.fillStyle='#222';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 地面
+  ctx.fillStyle='#444';
+  ctx.fillRect(0,GROUND_Y,canvas.width,4);
+  // 敵スポーンロジック
+  enemyTimer+=dt;
+  if(enemyTimer>3){
+    spawnEnemy();
+    enemyTimer=0;
+  }
+  // ユニット更新
+  units.forEach(u=>u.update(dt));
+  // デッドユニット削除
+  for(let i=units.length-1;i>=0;i--){
+    if(units[i].hp<=0) units.splice(i,1);
+  }
+  // 拠点描画
+  ctx.fillStyle='#2196f3';
+  ctx.fillRect(bases.player.x,GROUND_Y-60,40,60);
+  ctx.fillStyle='#e91e63';
+  ctx.fillRect(bases.enemy.x-40,GROUND_Y-60,40,60);
+  // ユニット描画
+  units.forEach(u=>u.draw());
+  // UI更新
+  money += dt*20; // パッシブ収入
+  moneySpan.textContent='お金: '+Math.floor(money);
+  baseHPSpan.textContent='自拠点HP: '+bases.player.hp;
+  enemyHPSpan.textContent='敵拠点HP: '+bases.enemy.hp;
+  // 勝敗判定
+  if(bases.player.hp<=0 || bases.enemy.hp<=0){
+    ctx.fillStyle='#fff';
+    ctx.font='48px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(bases.player.hp<=0?'You Lose!':'You Win!',canvas.width/2,canvas.height/2);
+    return;
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
