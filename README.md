@@ -10,6 +10,8 @@
 * 60 FPS 描画 (`requestAnimationFrame`) とシンプルな物理判定。
 * ボタンひとつでネコを出撃 → 敵拠点 HP を 0 にすれば勝利。
 * コードを数行変更するだけでユニット追加・画像差し替えが可能。
+![image](https://github.com/user-attachments/assets/1b103fcf-b74b-417c-afd6-97673b29b3fd)
+
 
 ## Quick Start
 
